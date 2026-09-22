@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบประเมินและบันทึกค่าความดัน - น้ำตาลในเลือด (Health Check Helper)</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Google Font Prompt/Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        /* Print styles for doctor summary printout */
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            .print-only {
+                display: block !important;
+            }
+            body {
+                background-color: #ffffff;
+                color: #000000;
+            }
+            .shadow-lg, .shadow-md, .shadow-sm {
+                box-shadow: none !important;
+            }
+            .border-print {
+                border: 1px solid #cbd5e1 !important;
+            }
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-800 flex flex-col justify-between">
+
+    <div>
+        <!-- Main Navigation Header -->
+        <header class="bg-gradient-to-r from-teal-700 via-teal-600 to-cyan-700 text-white shadow-md no-print">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="p-3 bg-white/10 rounded-2xl backdrop-blur-md">
+                            <i class="fa-solid fa-heart-pulse text-3xl text-rose-300 animate-pulse"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-xl sm:text-2xl font-bold tracking-tight">ระบบอ่านและบันทึกความดัน-เบาหวาน</h1>
+                            <p class="text-xs sm:text-sm text-teal-100">โปรแกรมตรวจเช็กสุขภาพ แปลผลด่วน และติดตามค่าความเสี่ยงประจำวัน</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center space-x-2 text-xs sm:text-sm bg-teal-800/40 p-2 rounded-xl backdrop-blur-sm self-start md:self-auto">
+                        <i class="fa-solid fa-user-doctor text-amber-300 text-base ml-1"></i>
+                        <span>เครื่องมือช่วยวิเคราะห์ข้อมูลเบื้องต้นสำหรับผู้ป่วยและผู้ดูแล</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Navigation Tabs -->
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 bg-teal-800/30 backdrop-blur-md border-t border-teal-500/30">
+                <nav class="flex space-x-1 sm:space-x-4 overflow-x-auto py-2 custom-scrollbar text-xs sm:text-sm font-medium">
+                    <button onclick="switchTab('evaluator')" id="tab-evaluator" class="tab-btn px-4 py-2.5 rounded-lg flex items-center gap-2 whitespace-nowrap transition-all bg-white text-teal-900 font-semibold shadow-sm">
+                        <i class="fa-solid fa-stethoscope"></i> ประเมิน & บันทึกค่า
+                    </button>
+                    <button onclick="switchTab('history')" id="tab-history" class="tab-btn px-4 py-2.5 rounded-lg flex items-center gap-2 whitespace-nowrap transition-all text-teal-100 hover:bg-teal-700/50">
+                        <i class="fa-solid fa-chart-line"></i> ประวัติ & กราฟแนวโน้ม
+                    </button>
+                    <button onclick="switchTab('knowledge')" id="tab-knowledge" class="tab-btn px-4 py-2.5 rounded-lg flex items-center gap-2 whitespace-nowrap transition-all text-teal-100 hover:bg-teal-700/50">
+                        <i class="fa-solid fa-book-medical"></i> เกณฑ์เกณฑ์มาตรฐาน
+                    </button>
+                    <button onclick="switchTab('tips')" id="tab-tips" class="tab-btn px-4 py-2.5 rounded-lg flex items-center gap-2 whitespace-nowrap transition-all text-teal-100 hover:bg-teal-700/50">
+                        <i class="fa-solid fa-apple-whole"></i> โภชนาการ & คำแนะนำ
+                    </button>
+                    <button onclick="switchTab('manage')" id="tab-manage" class="tab-btn px-4 py-2.5 rounded-lg flex items-center gap-2 whitespace-nowrap transition-all text-teal-100 hover:bg-teal-700/50">
+                        <i class="fa-solid fa-file-export"></i> ส่งออกข้อมูล & พิมพ์
+                    </button>
+                </nav>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+            
+            <!-- ALERT / MESSAGE CONTAINER -->
+            <div id="toast-container" class="fixed top-5 right-5 z-50 space-y-2 pointer-events-none"></div>
+
+            <!-- TAB 1: EVALUATOR & RECORD -->
+            <section id="sec-evaluator" class="tab-content space-y-6">
+                <!-- Top Instructions -->
+                <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-xl text-blue-900 text-xs sm:text-sm flex items-start gap-3">
+                    <i class="fa-solid fa-circle-info text-blue-500 text-lg mt-0.5"></i>
+                    <div>
+                        <span class="font-semibold">ข้อแนะนำการวัด:</span> นั่งพักอย่างน้อย 5 นาที ก่อนวัดความดันโลหิต ไม่ดื่มชา/กาแฟ หรือออกกำลังกายก่อนวัด 30 นาที และควรเจาะน้ำตาลตอนเช้าหลังอดอาหารอย่างน้อย 8 ชั่วโมง (สำหรับ FBS)
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <!-- Left Form Panel -->
+                    <div class="lg:col-span-5 bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <div class="flex items-center justify-between mb-4 border-b pb-3">
+                            <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                <i class="fa-solid fa-pen-to-square text-teal-600"></i> บันทึกข้อมูลสุขภาพ
+                            </h2>
+                            <span class="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full font-medium" id="current-date-badge">วันนี้</span>
+                        </div>
+
+                        <form id="health-form" onsubmit="handleFormSubmit(event)" class="space-y-4">
+                            <!-- Date & Time -->
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">วันที่วัด</label>
+                                    <input type="date" id="input-date" required class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">เวลา</label>
+                                    <input type="time" id="input-time" required class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 text-sm">
+                                </div>
+                            </div>
+
+                            <!-- BLOOD PRESSURE SECTION -->
+                            <div class="p-3.5 bg-rose-50/50 rounded-xl border border-rose-100 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-bold text-rose-800 flex items-center gap-1.5">
+                                        <i class="fa-solid fa-heart-pulse text-rose-500"></i> ความดันโลหิต (mmHg)
+                                    </span>
+                                    <span class="text-[10px] text-rose-600 bg-rose-100 px-2 py-0.5 rounded-full">ตัวบน / ตัวล่าง</span>
+                                </div>
+                                
+                                <div class="grid grid-cols-3 gap-2 sm:gap-3">
+                                    <div>
+                                        <label class="block text-[11px] text-slate-600 mb-0.5">ตัวบน (SYS)</label>
+                                        <input type="number" id="input-sys" placeholder="เช่น 120" min="50" max="250" class="w-full px-2.5 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-rose-400 text-sm text-center font-semibold">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] text-slate-600 mb-0.5">ตัวล่าง (DIA)</label>
+                                        <input type="number" id="input-dia" placeholder="เช่น 80" min="30" max="150" class="w-full px-2.5 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-rose-400 text-sm text-center font-semibold">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] text-slate-600 mb-0.5">ชีพจร (PULSE)</label>
+                                        <input type="number" id="input-pulse" placeholder="เช่น 72" min="30" max="200" class="w-full px-2.5 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-rose-400 text-sm text-center">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- BLOOD SUGAR SECTION -->
+                            <div class="p-3.5 bg-amber-50/50 rounded-xl border border-amber-100 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-bold text-amber-800 flex items-center gap-1.5">
+                                        <i class="fa-solid fa-droplet text-amber-500"></i> ระดับน้ำตาลในเลือด
+                                    </span>
+                                    <span class="text-[10px] text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">mg/dL หรือ %</span>
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div>
+                                        <label class="block text-[11px] text-slate-600 mb-0.5">ช่วงเวลาการเจาะเลือด</label>
+                                        <select id="input-sugar-type" onchange="updateSugarPlaceholder()" class="w-full px-2.5 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-amber-400 text-xs">
+                                            <option value="fbs">อดอาหาร 8 ชม. (FBS)</option>
+                                            <option value="postprandial">หลังอาหาร 2 ชม.</option>
+                                            <option value="random">สุ่มตรวจ/ก่อนอาหาร</option>
+                                            <option value="hba1c">น้ำตาลสะสม (HbA1c %)</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] text-slate-600 mb-0.5" id="label-sugar-val">ค่าน้ำตาล (mg/dL)</label>
+                                        <input type="number" step="0.1" id="input-sugar" placeholder="เช่น 95" min="20" max="600" class="w-full px-2.5 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-amber-400 text-sm text-center font-semibold">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Additional info -->
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">ชื่อผู้ป่วย/แท็ก</label>
+                                    <input type="text" id="input-patient" value="คุณพ่อ/คุณแม่" placeholder="เช่น ตัวฉันเอง, คุณพ่อ" class="w-full px-3 py-1.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-teal-500 text-xs">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">หมายเหตุ/อาการ</label>
+                                    <input type="text" id="input-notes" placeholder="เช่น เวียนหัวเล็กน้อย, ทานยาลดความดันแล้ว" class="w-full px-3 py-1.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-teal-500 text-xs">
+                                </div>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="pt-2 flex gap-2">
+                                <button type="button" onclick="evaluateRealtimeInputs()" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl text-xs transition-colors flex items-center justify-center gap-1">
+                                    <i class="fa-solid fa-calculator"></i> ทดลองแปลผล
+                                </button>
+                                <button type="submit" class="flex-1 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl text-xs shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-1.5">
+                                    <i class="fa-solid fa-floppy-disk"></i> บันทึกประวัติ
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Right Evaluation Dashboard Panel -->
+                    <div class="lg:col-span-7 space-y-4">
+                        <!-- Live Evaluation Card: Blood Pressure -->
+                        <div id="bp-result-card" class="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200 transition-all">
+                            <div class="flex items-center justify-between border-b pb-3 mb-4">
+                                <div class="flex items-center gap-2">
+                                    <span class="p-2 bg-rose-100 text-rose-600 rounded-lg"><i class="fa-solid fa-heart-pulse"></i></span>
+                                    <h3 class="font-bold text-slate-800">ผลการประเมินความดันโลหิต</h3>
+                                </div>
+                                <span id="bp-badge" class="px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600">รอใส่ข้อมูล</span>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4 text-center">
+                                <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                    <div class="text-xs text-slate-500">ค่าตัวบน (SYS)</div>
+                                    <div id="display-sys" class="text-2xl font-extrabold text-slate-700 mt-1">--</div>
+                                    <div class="text-[10px] text-slate-400">mmHg</div>
+                                </div>
+                                <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                    <div class="text-xs text-slate-500">ค่าตัวล่าง (DIA)</div>
+                                    <div id="display-dia" class="text-2xl font-extrabold text-slate-700 mt-1">--</div>
+                                    <div class="text-[10px] text-slate-400">mmHg</div>
+                                </div>
+                                <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                    <div class="text-xs text-slate-500">อัตราการเต้นหัวใจ</div>
+                                    <div id="display-pulse" class="text-2xl font-extrabold text-slate-700 mt-1">--</div>
+                                    <div class="text-[10px] text-slate-400">ครั้ง/นาที</div>
+                                </div>
+                            </div>
+
+                            <!-- BP Status details -->
+                            <div id="bp-details" class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                                <p class="text-xs text-slate-500 text-center">กรอกค่าความดันด้านซ้าย แล้วกด "ทดลองแปลผล" หรือ "บันทึกประวัติ" เพื่อดูการวิเคราะห์</p>
+                            </div>
+                        </div>
+
+                        <!-- Live Evaluation Card: Blood Sugar -->
+                        <div id="sugar-result-card" class="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200 transition-all">
+                            <div class="flex items-center justify-between border-b pb-3 mb-4">
+                                <div class="flex items-center gap-2">
+                                    <span class="p-2 bg-amber-100 text-amber-600 rounded-lg"><i class="fa-solid fa-droplet"></i></span>
+                                    <h3 class="font-bold text-slate-800">ผลการประเมินระดับน้ำตาลในเลือด</h3>
+                                </div>
+                                <span id="sugar-badge" class="px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600">รอใส่ข้อมูล</span>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 text-center">
+                                <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                    <div class="text-xs text-slate-500">ประเภทการตรวจ</div>
+                                    <div id="display-sugar-type" class="text-base font-bold text-slate-700 mt-1">--</div>
+                                </div>
+                                <div class="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                    <div class="text-xs text-slate-500">ค่าน้ำตาลที่ได้</div>
+                                    <div id="display-sugar" class="text-2xl font-extrabold text-slate-700 mt-1">--</div>
+                                    <div id="display-sugar-unit" class="text-[10px] text-slate-400">mg/dL</div>
+                                </div>
+                            </div>
+
+                            <!-- Sugar Status details -->
+                            <div id="sugar-details" class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                                <p class="text-xs text-slate-500 text-center">กรอกค่าน้ำตาลในเลือดด้านซ้าย เพื่อแปลผลและรับคำแนะนำทางการแพทย์เบื้องต้น</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: HISTORY & CHARTS -->
+            <section id="sec-history" class="tab-content hidden space-y-6">
+                <!-- Summary Stats Strip -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center space-x-3">
+                        <div class="p-3 bg-teal-100 text-teal-700 rounded-xl"><i class="fa-solid fa-list-check text-xl"></i></div>
+                        <div>
+                            <div class="text-xs text-slate-500">รายการทั้งหมด</div>
+                            <div id="stat-total-count" class="text-xl font-bold text-slate-800">0</div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center space-x-3">
+                        <div class="p-3 bg-rose-100 text-rose-700 rounded-xl"><i class="fa-solid fa-heart-pulse text-xl"></i></div>
+                        <div>
+                            <div class="text-xs text-slate-500">ความดันเฉลี่ย</div>
+                            <div id="stat-avg-bp" class="text-xl font-bold text-slate-800">--/--</div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center space-x-3">
+                        <div class="p-3 bg-amber-100 text-amber-700 rounded-xl"><i class="fa-solid fa-cubes-stacked text-xl"></i></div>
+                        <div>
+                            <div class="text-xs text-slate-500">น้ำตาลเฉลี่ย (FBS)</div>
+                            <div id="stat-avg-fbs" class="text-xl font-bold text-slate-800">-- <span class="text-xs font-normal">mg/dL</span></div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center space-x-3">
+                        <div class="p-3 bg-emerald-100 text-emerald-700 rounded-xl"><i class="fa-solid fa-shield-heart text-xl"></i></div>
+                        <div>
+                            <div class="text-xs text-slate-500">ค่าปกติล่าสุด</div>
+                            <div id="stat-normal-percent" class="text-xl font-bold text-emerald-600">--%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Container -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- BP Trend Chart -->
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                                <i class="fa-solid fa-chart-line text-rose-500"></i> แนวโน้มความดันโลหิต (mmHg)
+                            </h3>
+                            <span class="text-xs text-slate-400">10 ครั้งล่าสุด</span>
+                        </div>
+                        <div class="relative h-64 w-full">
+                            <canvas id="bpChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Sugar Trend Chart -->
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                                <i class="fa-solid fa-chart-simple text-amber-500"></i> แนวโน้มน้ำตาลในเลือด (mg/dL)
+                            </h3>
+                            <span class="text-xs text-slate-400">10 ครั้งล่าสุด</span>
+                        </div>
+                        <div class="relative h-64 w-full">
+                            <canvas id="sugarChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Table Container -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="p-4 sm:p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
+                        <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-clock-rotate-left text-teal-600"></i> บันทึกประวัติสุขภาพย้อนหลัง
+                        </h3>
+                        <div class="flex items-center gap-2">
+                            <input type="text" id="search-history" oninput="renderHistoryTable()" placeholder="ค้นหาหมายเหตุ/ผู้ป่วย..." class="px-3 py-1.5 rounded-lg border border-slate-300 text-xs w-48">
+                            <button onclick="loadSampleData()" class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs rounded-lg font-medium transition-colors">
+                                <i class="fa-solid fa-vial"></i> เพิ่มข้อมูลตัวอย่าง
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-left text-xs sm:text-sm">
+                            <thead class="bg-slate-100 text-slate-600 font-semibold uppercase tracking-wider text-[11px]">
+                                <tr>
+                                    <th class="py-3 px-4">วัน-เวลา</th>
+                                    <th class="py-3 px-4">ผู้ป่วย</th>
+                                    <th class="py-3 px-4">ความดัน (SYS/DIA)</th>
+                                    <th class="py-3 px-4">สถานะความดัน</th>
+                                    <th class="py-3 px-4">น้ำตาลในเลือด</th>
+                                    <th class="py-3 px-4">สถานะน้ำตาล</th>
+                                    <th class="py-3 px-4">หมายเหตุ</th>
+                                    <th class="py-3 px-4 text-center">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-table-body" class="divide-y divide-slate-200 text-slate-700">
+                                <!-- Dynamic Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: MEDICAL KNOWLEDGE & CRITERIA -->
+            <section id="sec-knowledge" class="tab-content hidden space-y-6">
+                <div class="text-center max-w-2xl mx-auto space-y-2">
+                    <h2 class="text-xl sm:text-2xl font-bold text-slate-800">เกณฑ์มาตรฐานการแปลผลสุขภาพ</h2>
+                    <p class="text-xs sm:text-sm text-slate-600">อ้างอิงจากแนวทางการรักษาโรคความดันโลหิตสูงและสมาคมโรคเบาหวานแห่งประเทศไทย</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- BP Reference Criteria Table -->
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                        <div class="flex items-center space-x-2 text-rose-600 font-bold border-b pb-3">
+                            <i class="fa-solid fa-heart-pulse text-xl"></i>
+                            <h3>ตารางเกณฑ์ความดันโลหิต (ผู้ใหญ่)</h3>
+                        </div>
+
+                        <div class="space-y-3 text-xs sm:text-sm">
+                            <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start justify-between">
+                                <div>
+                                    <div class="font-bold text-emerald-800">1. ปกติ (Normal)</div>
+                                    <div class="text-slate-600">ตัวบน &lt; 120 และ ตัวล่าง &lt; 80 mmHg</div>
+                                </div>
+                                <span class="px-2 py-0.5 bg-emerald-200 text-emerald-800 rounded font-semibold text-xs">เสี่ยงต่ำ</span>
+                            </div>
+
+                            <div class="p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-start justify-between">
+                                <div>
+                                    <div class="font-bold text-amber-800">2. เฝ้าระวัง / สูงเล็กน้อย (Elevated)</div>
+                                    <div class="text-slate-600">ตัวบน 120-129 และ ตัวล่าง &lt; 80 mmHg</div>
+                                </div>
+                                <span class="px-2 py-0.5 bg-amber-200 text-amber-800 rounded font-semibold text-xs">เริ่มปรับพฤติกรรม</span>
+                            </div>
+
+                            <div class="p-3 rounded-xl bg-orange-50 border border-orange-200 flex items-start justify-between">
+                                <div>
+                                    <div class="font-bold text-orange-800">3. ความดันสูง ระยะที่ 1 (Stage 1)</div>
+                                    <div class="text-slate-600">ตัวบน 130-139 หรือ ตัวล่าง 80-89 mmHg</div>
+                                </div>
+                                <span class="px-2 py-0.5 bg-orange-200 text-orange-800 rounded font-semibold text-xs">ควรปรึกษาแพทย์</span>
+                            </div>
+
+                            <div class="p-3 rounded-xl bg-rose-50 border border-rose-200 flex items-start justify-between">
+                                <div>
+                                    <div class="font-bold text-rose-800">4. ความดันสูง ระยะที่ 2 (Stage 2)</div>
+                                    <div class="text-slate-600">ตัวบน ≥ 140 หรือ ตัวล่าง ≥ 90 mmHg</div>
+                                </div>
+                                <span class="px-2 py-0.5 bg-rose-200 text-rose-800 rounded font-semibold text-xs">เสี่ยงสูง-ต้องพบแพทย์</span>
+                            </div>
+
+                            <div class="p-3 rounded-xl bg-red-100 border border-red-300 flex items-start justify-between">
+                                <div>
+                                    <div class="font-bold text-red-900">5. วิกฤตความดันสูง (Crisis)</div>
+                                    <div class="text-slate-600">ตัวบน &gt; 180 หรือ ตัวล่าง &gt; 120 mmHg</div>
+                                </div>
+                                <span class="px-2 py-0.5 bg-red-600 text-white rounded font-semibold text-xs animate-pulse">พบแพทย์ด่วน!</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Blood Sugar Reference Criteria Table -->
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                        <div class="flex items-center space-x-2 text-amber-600 font-bold border-b pb-3">
+                            <i class="fa-solid fa-droplet text-xl"></i>
+                            <h3>ตารางเกณฑ์ระดับน้ำตาลในเลือด (FBS)</h3>
+                        </div>
+
+                        <div class="space-y-3 text-xs sm:text-sm">
+                            <div class="p-3 rounded-xl bg-sky-50 border border-sky-200 flex items-start justify-between">
+                                <div>
+                                    <div class="font-bold text-sky-800">1. น้ำตาลในเลือดต่ำ (Hypoglycemia)</div>
+                                    <div class="text-slate-600">อดอาหาร 8 ชม. &lt; 70 mg/dL</div>
+                                </div>
+                                <span class="px-2 py-0.5 bg-sky-200 text-sky-800 rounded font-semibold text-xs">เสี่ยงวูบ/หน้ามืด</span>
+                            </div>
+
+                            <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start justify-between">
+                                <div>
+                                    <div class="font-bold text-emerald-800">2. ปกติ (Normal)</div>
+                                    <div class="text-slate-600">อดอาหาร 8 ชม.: 70 - 99 mg/dL<br>หลังอาหาร 2 ชม.: &lt; 140 mg/dL</div>
+                                </div>
+                                <span class="px-2 py-0.5 bg-emerald-200 text-emerald-800 rounded font-semibold text-xs">ปกติ</span>
+                            </div>
+
+                            <div class="p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-start justify-between">
+                                <div>
+                                    <div class="font-bold text-amber-800">3. เสี่ยงเบาหวาน (Prediabetes)</div>
+                                    <div class="text-slate-600">อดอาหาร 8 ชม.: 100 - 125 mg/dL<br>หลังอาหาร 2 ชม.: 140 - 199 mg/dL</div>
+                                </div>
+                                <span class="px-2 py-0.5 bg-amber-200 text-amber-800 rounded font-semibold text-xs">คุมอาหารด่วน</span>
+                            </div>
+
+                            <div class="p-3 rounded-xl bg-rose-50 border border-rose-200 flex items-start justify-between">
+                                <div>
+                                    <div class="font-bold text-rose-800">4. เกณฑ์โรคเบาหวาน (Diabetes)</div>
+                                    <div class="text-slate-600">อดอาหาร 8 ชม. ≥ 126 mg/dL<br>สุ่มตรวจ / หลังอาหาร ≥ 200 mg/dL</div>
+                                </div>
+                                <span class="px-2 py-0.5 bg-rose-200 text-rose-800 rounded font-semibold text-xs">พบแพทย์รับยา</span>
+                            </div>
+
+                            <div class="p-3 rounded-xl bg-purple-50 border border-purple-200 flex items-start justify-between">
+                                <div>
+                                    <div class="font-bold text-purple-800">5. น้ำตาลสะสม (HbA1c)</div>
+                                    <div class="text-slate-600">ปกติ &lt; 5.7% | เสี่ยง 5.7 - 6.4% | เบาหวาน ≥ 6.5%</div>
+                                </div>
+                                <span class="px-2 py-0.5 bg-purple-200 text-purple-800 rounded font-semibold text-xs">สะสม 2-3 เดือน</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 4: HEALTH & DIET TIPS -->
+            <section id="sec-tips" class="tab-content hidden space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Red Flag Alert -->
+                    <div class="bg-gradient-to-br from-rose-500 to-red-600 text-white p-6 rounded-2xl shadow-md space-y-3">
+                        <div class="flex items-center space-x-2 text-xl font-bold">
+                            <i class="fa-solid fa-triangle-exclamation text-amber-300"></i>
+                            <h3>สัญญาณอันตรายต้องพบแพทย์ด่วน</h3>
+                        </div>
+                        <ul class="space-y-2 text-xs sm:text-sm text-rose-50">
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-rose-300 mt-1"></i> เวียนศีรษะ ปวดศีรษะรุนแรงบริเวณท้ายทอย</li>
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-rose-300 mt-1"></i> ตาพร่ามัว มองเห็นภาพซ้อนเฉียบพลัน</li>
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-rose-300 mt-1"></i> แน่นหน้าอก หายใจหอบเหนื่อย ใจสั่น</li>
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-rose-300 mt-1"></i> แขนขาอ่อนแรง ปากเบี้ยว พูดไม่ชัด</li>
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-rose-300 mt-1"></i> เหงื่อออก ตัวเย็น ใจสั่น มือสั่น (น้ำตาลต่ำกว่า 70)</li>
+                        </ul>
+                    </div>
+
+                    <!-- DASH Diet Tips -->
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+                        <div class="flex items-center space-x-2 text-teal-700 font-bold border-b pb-2">
+                            <i class="fa-solid fa-utensils text-lg"></i>
+                            <h3>สูตรอาหารลดความดัน (DASH Diet)</h3>
+                        </div>
+                        <ul class="space-y-2 text-xs sm:text-sm text-slate-600">
+                            <li><strong class="text-teal-800">ลดโซเดียม:</strong> เลี่ยงน้ำปลา ผงชูรส อาหารแปรรูป หมักดอง ไม่เกิน 1 ช้อนชา/วัน</li>
+                            <li><strong class="text-teal-800">เพิ่มโพแทสเซียม:</strong> ทานผักใบเขียว กล้วย ส้ม มะเขือเทศ ธัญพืชไม่ขัดสี</li>
+                            <li><strong class="text-teal-800">ลดไขมันอิ่มตัว:</strong> เลี่ยงเนื้อสัตว์ติดมัน กะทิ ของทอด เนย</li>
+                        </ul>
+                    </div>
+
+                    <!-- Sugar Control Tips -->
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-3">
+                        <div class="flex items-center space-x-2 text-amber-700 font-bold border-b pb-2">
+                            <i class="fa-solid fa-bowl-rice text-lg"></i>
+                            <h3>เทคนิคคุมน้ำตาลในเลือด</h3>
+                        </div>
+                        <ul class="space-y-2 text-xs sm:text-sm text-slate-600">
+                            <li><strong class="text-amber-800">เลี่ยงน้ำหวาน:</strong> ชานม กาแฟเย็น น้ำอัดลม ผลไม้รสหวานจัด เช่น ทุเรียน ลำไย</li>
+                            <li><strong class="text-amber-800">เปลี่ยนชนิดแป้ง:</strong> ทานข้าวกล้อง ขนมปังโฮลวีต แทนข้าวขาว/ขนมปังขาว</li>
+                            <li><strong class="text-amber-800">ออกกำลังกาย:</strong> เดินเร็วหลังอาหาร 15-20 นาที ช่วยให้ร่างกายไวต่ออินซูลินมากขึ้น</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 5: DATA EXPORT & PRINT REPORT -->
+            <section id="sec-manage" class="tab-content hidden space-y-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 max-w-2xl mx-auto space-y-5">
+                    <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2 border-b pb-3">
+                        <i class="fa-solid fa-sliders text-teal-600"></i> จัดการข้อมูลและพิมพ์รายงาน
+                    </h2>
+
+                    <div class="space-y-4 text-xs sm:text-sm">
+                        <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+                            <div>
+                                <div class="font-bold text-slate-800">ส่งออกข้อมูลเป็น CSV (Excel)</div>
+                                <div class="text-slate-500 text-xs">ดาวน์โหลดไฟล์บันทึกสุขภาพทั้งหมดเก็บไว้ในเครื่อง</div>
+                            </div>
+                            <button onclick="exportToCSV()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg transition-colors flex items-center gap-1.5 text-xs">
+                                <i class="fa-solid fa-file-excel"></i> ส่งออก CSV
+                            </button>
+                        </div>
+
+                        <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+                            <div>
+                                <div class="font-bold text-slate-800">พิมพ์รายงานสุขภาพสรุป</div>
+                                <div class="text-slate-500 text-xs">เตรียมหน้ารายงานย่อเพื่อนำไปแสดงให้แพทย์ดูในวันนัด</div>
+                            </div>
+                            <button onclick="window.print()" class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-medium rounded-lg transition-colors flex items-center gap-1.5 text-xs">
+                                <i class="fa-solid fa-print"></i> พิมพ์รายงาน
+                            </button>
+                        </div>
+
+                        <div class="p-4 bg-rose-50 rounded-xl border border-rose-200 flex items-center justify-between">
+                            <div>
+                                <div class="font-bold text-rose-900">ล้างข้อมูลประวัติทั้งหมด</div>
+                                <div class="text-rose-600 text-xs">ลบประวัติที่บันทึกไว้ในบราวเซอร์เครื่องนี้อย่างถาวร</div>
+                            </div>
+                            <button onclick="clearAllData()" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-medium rounded-lg transition-colors flex items-center gap-1.5 text-xs">
+                                <i class="fa-solid fa-trash-can"></i> ลบข้อมูล
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Print View Summary Block (Visible when printing) -->
+                <div class="hidden print-only p-6 border-print rounded-xl space-y-4">
+                    <div class="text-center border-b pb-4">
+                        <h1 class="text-2xl font-bold">รายงานบันทึกความดันโลหิตและระดับน้ำตาลในเลือด</h1>
+                        <p class="text-sm text-slate-600">วันที่พิมพ์: <span id="print-date"></span> | ข้อมูลสุขภาพส่วนบุคคล</p>
+                    </div>
+
+                    <div id="print-table-container">
+                        <!-- Table rendered for printing -->
+                    </div>
+
+                    <div class="mt-8 pt-4 border-t text-xs text-slate-500 flex justify-between">
+                        <span>หมายเหตุ: ข้อมูลนี้เป็นบันทึกประจำวันโดยผู้ป่วย</span>
+                        <span>ลายเซ็นแพทย์ผู้ตรวจ: ___________________________</span>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-slate-800 text-slate-400 py-4 text-center text-xs no-print mt-8">
+        <div class="max-w-7xl mx-auto px-4">
+            <p>ระบบประเมินค่าความดันโลหิตและระดับน้ำตาลในเลือด &copy; 2026 - เครื่องมือเพื่อการดูแลสุขภาพตนเองเบื้องต้น</p>
+            <p class="text-[11px] text-slate-500 mt-1">คำเตือน: โปรแกรมนี้ไม่สามารถทดแทนการวินิจฉัยโรคโดยแพทย์ผู้เชี่ยวชาญ หากมีอาการผิดปกติกรุณาพบแพทย์ทันที</p>
+        </div>
+    </footer>
+
+    <script>
+        // Global State & LocalStorage
+        const STORAGE_KEY = 'health_tracker_records_v1';
+        let records = [];
+        let bpChartInstance = null;
+        let sugarChartInstance = null;
+
+        // Initialize Application
+        window.onload = function() {
+            // Set default date & time input
+            const now = new Date();
+            document.getElementById('input-date').value = now.toISOString().split('T')[0];
+            document.getElementById('input-time').value = now.toTimeString().substring(0, 5);
+            document.getElementById('current-date-badge').innerText = `วันนี้: ${now.toLocaleDateString('th-TH')}`;
+            document.getElementById('print-date').innerText = now.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+            // Load saved records from localStorage
+            loadRecords();
+
+            // Initialize Charts
+            initCharts();
+
+            // Initial Render
+            renderHistoryTable();
+            updateStatsSummary();
+        };
+
+        // Navigation Tab Switcher
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(el => {
+                el.classList.remove('bg-white', 'text-teal-900', 'font-semibold', 'shadow-sm');
+                el.classList.add('text-teal-100', 'hover:bg-teal-700/50');
+            });
+
+            document.getElementById(`sec-${tabId}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tab-${tabId}`);
+            activeBtn.classList.add('bg-white', 'text-teal-900', 'font-semibold', 'shadow-sm');
+            activeBtn.classList.remove('text-teal-100', 'hover:bg-teal-700/50');
+
+            if (tabId === 'history') {
+                updateCharts();
+            }
+        }
+
+        // Update Blood Sugar Label depending on type selected
+        function updateSugarPlaceholder() {
+            const type = document.getElementById('input-sugar-type').value;
+            const label = document.getElementById('label-sugar-val');
+            const input = document.getElementById('input-sugar');
+
+            if (type === 'hba1c') {
+                label.innerText = 'น้ำตาลสะสม (HbA1c %)';
+                input.placeholder = 'เช่น 6.0';
+                input.step = '0.1';
+            } else {
+                label.innerText = 'ค่าน้ำตาล (mg/dL)';
+                input.placeholder = 'เช่น 95';
+                input.step = '1';
+            }
+        }
+
+        // Blood Pressure Evaluation Engine
+        function evaluateBP(sys, dia) {
+            if (!sys || !dia) return null;
+            
+            sys = Number(sys);
+            dia = Number(dia);
+
+            if (sys >= 180 || dia >= 120) {
+                return {
+                    level: 'วิกฤตความดันสูง (Crisis)',
+                    color: 'bg-red-600 text-white border-red-700',
+                    badge: 'bg-red-100 text-red-800 border-red-300',
+                    advice: '⚠️ ความดันอยู่ในระดับอันตรายมาก! หากมีอาการเวียนศีรษะ แน่นหน้าอก ตาพร่ามัว ให้รีบพบแพทย์หรือติดต่อ 1669 ด่วน',
+                    statusKey: 'crisis'
+                };
+            } else if (sys >= 140 || dia >= 90) {
+                return {
+                    level: 'ความดันสูง ระยะที่ 2',
+                    color: 'bg-rose-50 border-rose-300 text-rose-900',
+                    badge: 'bg-rose-100 text-rose-800',
+                    advice: 'ความดันสูงระดับที่ควรทานยาควบคุมเป็นประจำ งดอาหารเค็มจัด พักผ่อนให้เพียงพอ และพบแพทย์ตามนัด',
+                    statusKey: 'stage2'
+                };
+            } else if ((sys >= 130 && sys <= 139) || (dia >= 80 && dia <= 89)) {
+                return {
+                    level: 'ความดันสูง ระยะที่ 1',
+                    color: 'bg-orange-50 border-orange-300 text-orange-900',
+                    badge: 'bg-orange-100 text-orange-800',
+                    advice: 'ความดันเริ่มสูง ควบคุมการทานเค็ม ออกกำลังกายสม่ำเสมอ และตรวจวัดซ้ำเป็นประจำ',
+                    statusKey: 'stage1'
+                };
+            } else if (sys >= 120 && sys <= 129 && dia < 80) {
+                return {
+                    level: 'เฝ้าระวัง (Elevated)',
+                    color: 'bg-amber-50 border-amber-300 text-amber-900',
+                    badge: 'bg-amber-100 text-amber-800',
+                    advice: 'ความดันค่อนข้างสูงกว่าปกติเล็กน้อย ควรลดของเค็ม อาหารแปรรูป และดูแลน้ำหนักตัว',
+                    statusKey: 'elevated'
+                };
+            } else if (sys < 90 || dia < 60) {
+                return {
+                    level: 'ความดันต่ำ (Low BP)',
+                    color: 'bg-sky-50 border-sky-300 text-sky-900',
+                    badge: 'bg-sky-100 text-sky-800',
+                    advice: 'ความดันต่ำกว่าปกติ ดื่มน้ำให้เพียงพอ ลุกยืนช้าๆ หากมีอาการหน้ามืดวูบควรพักและดื่มน้ำเกลือแร่',
+                    statusKey: 'low'
+                };
+            } else {
+                return {
+                    level: 'ความดันปกติ (Normal)',
+                    color: 'bg-emerald-50 border-emerald-300 text-emerald-900',
+                    badge: 'bg-emerald-100 text-emerald-800',
+                    advice: 'ความดันอยู่ในเกณฑ์สุขภาพดีเยี่ยม! รักษารูปแบบการดำเนินชีวิตและอาหารการกินต่อไป',
+                    statusKey: 'normal'
+                };
+            }
+        }
+
+        // Blood Sugar Evaluation Engine
+        function evaluateSugar(val, type) {
+            if (!val) return null;
+            val = Number(val);
+
+            if (type === 'hba1c') {
+                if (val >= 6.5) {
+                    return {
+                        level: 'เข้าเกณฑ์เบาหวาน (HbA1c ≥ 6.5%)',
+                        badge: 'bg-rose-100 text-rose-800',
+                        advice: 'ค่า HbA1c สูงเกินเกณฑ์ บ่งบอกถึงระดับน้ำตาลสูงต่อเนื่องในช่วง 2-3 เดือนที่ผ่านมา ควรพบแพทย์'
+                    };
+                } else if (val >= 5.7) {
+                    return {
+                        level: 'เสี่ยงเบาหวาน (HbA1c 5.7-6.4%)',
+                        badge: 'bg-amber-100 text-amber-800',
+                        advice: 'อยู่ในกลุ่มเสี่ยง ควรเริ่มคุมแป้งและน้ำหวาน ออกกำลังกายเพื่อป้องกันการกลายเป็นเบาหวาน'
+                    };
+                } else {
+                    return {
+                        level: 'ปกติ (HbA1c < 5.7%)',
+                        badge: 'bg-emerald-100 text-emerald-800',
+                        advice: 'ค่าน้ำตาลสะสมอยู่ในเกณฑ์ปกติ สุขภาพดี'
+                    };
+                }
+            }
+
+            // Fasting (FBS) or Random
+            if (val < 70) {
+                return {
+                    level: 'น้ำตาลในเลือดต่ำ (Hypoglycemia)',
+                    badge: 'bg-sky-100 text-sky-800',
+                    advice: '⚠️ เสี่ยงภาวะน้ำตาลต่ำ! รับประทานอมยิ้ม/น้ำส้ม 1/2 แก้วทันที แล้วตรวจซ้ำใน 15 นาที'
+                };
+            }
+
+            if (type === 'fbs') {
+                if (val >= 126) {
+                    return {
+                        level: 'เข้าเกณฑ์เบาหวาน (FBS ≥ 126)',
+                        badge: 'bg-rose-100 text-rose-800',
+                        advice: 'ค่าน้ำตาลอดอาหารสูงกว่าปกติ ควรตรวจซ้ำหรือพบแพทย์เพื่อประเมินการรักษา'
+                    };
+                } else if (val >= 100) {
+                    return {
+                        level: 'เสี่ยงเบาหวาน (FBS 100-125)',
+                        badge: 'bg-amber-100 text-amber-800',
+                        advice: 'น้ำตาลเริ่มสูง เลี่ยงของหวาน ข้าวขาว และน้ำอัดลม ปรับพฤติกรรมด่วน'
+                    };
+                } else {
+                    return {
+                        level: 'ปกติดี (FBS 70-99)',
+                        badge: 'bg-emerald-100 text-emerald-800',
+                        advice: 'ระดับน้ำตาลหลังอดอาหารอยู่ในเกณฑ์ปกติอย่างสมบูรณ์'
+                    };
+                }
+            } else { // Postprandial or Random
+                if (val >= 200) {
+                    return {
+                        level: 'น้ำตาลสูงมาก (≥ 200 mg/dL)',
+                        badge: 'bg-rose-100 text-rose-800',
+                        advice: 'ระดับน้ำตาลหลังอาหารหรือสุ่มตรวจสูงมาก ควรดื่มน้ำเปล่ามากๆ และพบแพทย์'
+                    };
+                } else if (val >= 140) {
+                    return {
+                        level: 'น้ำตาลสูงกว่าปกติ (140-199 mg/dL)',
+                        badge: 'bg-amber-100 text-amber-800',
+                        advice: 'น้ำตาลหลังอาหารค่อนข้างสูง ควรลดปริมาณแป้งและของหวานในมื้ออาหาร'
+                    };
+                } else {
+                    return {
+                        level: 'ปกติ (< 140 mg/dL)',
+                        badge: 'bg-emerald-100 text-emerald-800',
+                        advice: 'ระดับน้ำตาลหลังอาหารอยู่ในเกณฑ์ปลอดภัย'
+                    };
+                }
+            }
+        }
+
+        function evaluateRealtimeInputs() {
+            const sys = document.getElementById('input-sys').value;
+            const dia = document.getElementById('input-dia').value;
+            const pulse = document.getElementById('input-pulse').value;
+            const sugar = document.getElementById('input-sugar').value;
+            const sugarType = document.getElementById('input-sugar-type').value;
+
+            // BP UI Update
+            const sysDisplay = document.getElementById('display-sys');
+            const diaDisplay = document.getElementById('display-dia');
+            const pulseDisplay = document.getElementById('display-pulse');
+            const bpBadge = document.getElementById('bp-badge');
+            const bpDetails = document.getElementById('bp-details');
+
+            sysDisplay.innerText = sys || '--';
+            diaDisplay.innerText = dia || '--';
+            pulseDisplay.innerText = pulse || '--';
+
+            if (sys && dia) {
+                const resBP = evaluateBP(sys, dia);
+                bpBadge.className = `px-3 py-1 rounded-full text-xs font-bold ${resBP.badge}`;
+                bpBadge.innerText = resBP.level;
+
+                bpDetails.className = `p-4 rounded-xl border ${resBP.color}`;
+                bpDetails.innerHTML = `
+                    <div class="font-bold mb-1 flex items-center gap-1.5">
+                        <i class="fa-solid fa-notes-medical"></i> ${resBP.level}
+                    </div>
+                    <p class="text-xs leading-relaxed">${resBP.advice}</p>
+                `;
+            } else {
+                bpBadge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600';
+                bpBadge.innerText = 'กรอกข้อมูลไม่ครบ';
+                bpDetails.innerHTML = '<p class="text-xs text-slate-500 text-center">กรุณากรอกค่าตัวบน (SYS) และตัวล่าง (DIA)</p>';
+            }
+
+            // Sugar UI Update
+            const sugarDisplay = document.getElementById('display-sugar');
+            const sugarTypeDisplay = document.getElementById('display-sugar-type');
+            const sugarUnitDisplay = document.getElementById('display-sugar-unit');
+            const sugarBadge = document.getElementById('sugar-badge');
+            const sugarDetails = document.getElementById('sugar-details');
+
+            const typeNames = {
+                'fbs': 'อดอาหาร 8 ชม. (FBS)',
+                'postprandial': 'หลังอาหาร 2 ชม.',
+                'random': 'สุ่มตรวจ/ก่อนอาหาร',
+                'hba1c': 'น้ำตาลสะสม (HbA1c)'
+            };
+
+            sugarTypeDisplay.innerText = typeNames[sugarType] || '--';
+            sugarDisplay.innerText = sugar || '--';
+            sugarUnitDisplay.innerText = sugarType === 'hba1c' ? '%' : 'mg/dL';
+
+            if (sugar) {
+                const resSugar = evaluateSugar(sugar, sugarType);
+                sugarBadge.className = `px-3 py-1 rounded-full text-xs font-bold ${resSugar.badge}`;
+                sugarBadge.innerText = resSugar.level;
+
+                sugarDetails.className = `p-4 rounded-xl border bg-slate-50 border-slate-200`;
+                sugarDetails.innerHTML = `
+                    <div class="font-bold text-slate-800 mb-1 flex items-center gap-1.5">
+                        <i class="fa-solid fa-heart-pulse"></i> ${resSugar.level}
+                    </div>
+                    <p class="text-xs text-slate-600 leading-relaxed">${resSugar.advice}</p>
+                `;
+            } else {
+                sugarBadge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600';
+                sugarBadge.innerText = 'ไม่ได้กรอก';
+                sugarDetails.innerHTML = '<p class="text-xs text-slate-500 text-center">ไม่ได้กรอกค่าน้ำตาลในรอบนี้</p>';
+            }
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+
+            const date = document.getElementById('input-date').value;
+            const time = document.getElementById('input-time').value;
+            const sys = document.getElementById('input-sys').value;
+            const dia = document.getElementById('input-dia').value;
+            const pulse = document.getElementById('input-pulse').value;
+            const sugar = document.getElementById('input-sugar').value;
+            const sugarType = document.getElementById('input-sugar-type').value;
+            const patient = document.getElementById('input-patient').value || 'ทั่วไป';
+            const notes = document.getElementById('input-notes').value || '-';
+
+            if (!sys && !sugar) {
+                showToast('กรุณากรอกอย่างน้อย 1 อย่าง (ความดัน หรือ น้ำตาล)', 'warning');
+                return;
+            }
+
+            const record = {
+                id: Date.now(),
+                timestamp: `${date}T${time}`,
+                date,
+                time,
+                patient,
+                sys: sys ? Number(sys) : null,
+                dia: dia ? Number(dia) : null,
+                pulse: pulse ? Number(pulse) : null,
+                sugar: sugar ? Number(sugar) : null,
+                sugarType,
+                notes
+            };
+
+            records.unshift(record); // Add to beginning
+            saveRecords();
+            renderHistoryTable();
+            updateStatsSummary();
+            evaluateRealtimeInputs();
+
+            showToast('บันทึกข้อมูลเรียบร้อยแล้ว!', 'success');
+        }
+
+        function loadRecords() {
+            try {
+                const data = localStorage.getItem(STORAGE_KEY);
+                records = data ? JSON.parse(data) : [];
+            } catch (err) {
+                console.error('Error loading local records', err);
+                records = [];
+            }
+        }
+
+        function saveRecords() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+        }
+
+        function renderHistoryTable() {
+            const tbody = document.getElementById('history-table-body');
+            const search = document.getElementById('search-history').value.toLowerCase();
+            
+            const filtered = records.filter(r => 
+                (r.notes && r.notes.toLowerCase().includes(search)) ||
+                (r.patient && r.patient.toLowerCase().includes(search))
+            );
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center py-8 text-slate-400">
+                            <i class="fa-solid fa-folder-open text-3xl mb-2"></i>
+                            <p class="text-xs">ยังไม่มีข้อมูลบันทึก กด "เพิ่มข้อมูลตัวอย่าง" เพื่อทดลองใช้งาน</p>
+                        </td>
+                    </tr>
+                `;
+                renderPrintTable([]);
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(r => {
+                const bpEval = (r.sys && r.dia) ? evaluateBP(r.sys, r.dia) : null;
+                const sugarEval = r.sugar ? evaluateSugar(r.sugar, r.sugarType) : null;
+
+                return `
+                    <tr class="hover:bg-slate-50 transition-colors border-b border-slate-100">
+                        <td class="py-3 px-4 font-medium text-slate-800">
+                            <div>${r.date}</div>
+                            <div class="text-[11px] text-slate-400">${r.time}</div>
+                        </td>
+                        <td class="py-3 px-4">
+                            <span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[11px]">${r.patient}</span>
+                        </td>
+                        <td class="py-3 px-4 font-bold text-slate-800">
+                            ${r.sys && r.dia ? `${r.sys}/${r.dia} <span class="text-[10px] font-normal text-slate-400">(${r.pulse || '--'} bpm)</span>` : '-'}
+                        </td>
+                        <td class="py-3 px-4">
+                            ${bpEval ? `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${bpEval.badge}">${bpEval.level}</span>` : '-'}
+                        </td>
+                        <td class="py-3 px-4 font-bold text-slate-800">
+                            ${r.sugar ? `${r.sugar} <span class="text-[10px] font-normal text-slate-400">${r.sugarType === 'hba1c' ? '%' : 'mg/dL'}</span>` : '-'}
+                        </td>
+                        <td class="py-3 px-4">
+                            ${sugarEval ? `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${sugarEval.badge}">${sugarEval.level}</span>` : '-'}
+                        </td>
+                        <td class="py-3 px-4 text-slate-600 max-w-xs truncate">${r.notes}</td>
+                        <td class="py-3 px-4 text-center">
+                            <button onclick="deleteRecord(${r.id})" class="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors" title="ลบรายการ">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            renderPrintTable(filtered);
+        }
+
+        function renderPrintTable(data) {
+            const container = document.getElementById('print-table-container');
+            if (data.length === 0) {
+                container.innerHTML = '<p class="text-center py-4">ไม่มีข้อมูลบันทึก</p>';
+                return;
+            }
+
+            container.innerHTML = `
+                <table class="w-full text-xs border-collapse">
+                    <thead>
+                        <tr class="bg-slate-200 border-b">
+                            <th class="p-2 text-left">วัน-เวลา</th>
+                            <th class="p-2 text-left">ผู้ป่วย</th>
+                            <th class="p-2 text-left">ความดัน (SYS/DIA)</th>
+                            <th class="p-2 text-left">สถานะความดัน</th>
+                            <th class="p-2 text-left">น้ำตาลในเลือด</th>
+                            <th class="p-2 text-left">สถานะน้ำตาล</th>
+                            <th class="p-2 text-left">อาการ/หมายเหตุ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.map(r => {
+                            const bpEval = (r.sys && r.dia) ? evaluateBP(r.sys, r.dia) : null;
+                            const sugarEval = r.sugar ? evaluateSugar(r.sugar, r.sugarType) : null;
+                            return `
+                                <tr class="border-b">
+                                    <td class="p-2">${r.date} ${r.time}</td>
+                                    <td class="p-2">${r.patient}</td>
+                                    <td class="p-2 font-bold">${r.sys && r.dia ? `${r.sys}/${r.dia} mmHg` : '-'}</td>
+                                    <td class="p-2">${bpEval ? bpEval.level : '-'}</td>
+                                    <td class="p-2 font-bold">${r.sugar ? `${r.sugar} ${r.sugarType === 'hba1c' ? '%' : 'mg/dL'}` : '-'}</td>
+                                    <td class="p-2">${sugarEval ? sugarEval.level : '-'}</td>
+                                    <td class="p-2">${r.notes}</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function deleteRecord(id) {
+            records = records.filter(r => r.id !== id);
+            saveRecords();
+            renderHistoryTable();
+            updateStatsSummary();
+            updateCharts();
+            showToast('ลบรายการสำเร็จแล้ว', 'info');
+        }
+
+        function updateStatsSummary() {
+            document.getElementById('stat-total-count').innerText = records.length;
+
+            const bpRecords = records.filter(r => r.sys && r.dia);
+            if (bpRecords.length > 0) {
+                const avgSys = Math.round(bpRecords.reduce((acc, r) => acc + r.sys, 0) / bpRecords.length);
+                const avgDia = Math.round(bpRecords.reduce((acc, r) => acc + r.dia, 0) / bpRecords.length);
+                document.getElementById('stat-avg-bp').innerText = `${avgSys}/${avgDia}`;
+            } else {
+                document.getElementById('stat-avg-bp').innerText = '--/--';
+            }
+
+            const fbsRecords = records.filter(r => r.sugar && r.sugarType === 'fbs');
+            if (fbsRecords.length > 0) {
+                const avgFbs = Math.round(fbsRecords.reduce((acc, r) => acc + r.sugar, 0) / fbsRecords.length);
+                document.getElementById('stat-avg-fbs').innerHTML = `${avgFbs} <span class="text-xs font-normal">mg/dL</span>`;
+            } else {
+                document.getElementById('stat-avg-fbs').innerHTML = `-- <span class="text-xs font-normal">mg/dL</span>`;
+            }
+
+            if (records.length > 0) {
+                const normalBPCount = bpRecords.filter(r => r.sys < 120 && r.dia < 80).length;
+                const normalSugarCount = fbsRecords.filter(r => r.sugar >= 70 && r.sugar <= 99).length;
+                const totalChecked = bpRecords.length + fbsRecords.length;
+
+                if (totalChecked > 0) {
+                    const pct = Math.round(((normalBPCount + normalSugarCount) / totalChecked) * 100);
+                    document.getElementById('stat-normal-percent').innerText = `${pct}%`;
+                } else {
+                    document.getElementById('stat-normal-percent').innerText = `--%`;
+                }
+            } else {
+                document.getElementById('stat-normal-percent').innerText = `--%`;
+            }
+        }
+
+        function initCharts() {
+            const ctxBP = document.getElementById('bpChart').getContext('2d');
+            bpChartInstance = new Chart(ctxBP, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'ตัวบน (SYS)',
+                            data: [],
+                            borderColor: '#ef4444',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            fill: true,
+                            tension: 0.3
+                        },
+                        {
+                            label: 'ตัวล่าง (DIA)',
+                            data: [],
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            fill: true,
+                            tension: 0.3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' }
+                    },
+                    scales: {
+                        y: { min: 40, max: 200 }
+                    }
+                }
+            });
+
+            const ctxSugar = document.getElementById('sugarChart').getContext('2d');
+            sugarChartInstance = new Chart(ctxSugar, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'ค่าน้ำตาล (mg/dL)',
+                            data: [],
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                            fill: true,
+                            tension: 0.3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' }
+                    },
+                    scales: {
+                        y: { min: 50, max: 250 }
+                    }
+                }
+            });
+
+            updateCharts();
+        }
+
+        function updateCharts() {
+            if (!bpChartInstance || !sugarChartInstance) return;
+
+            // Take last 10 records reversed (chronological order)
+            const recent = [...records].slice(0, 10).reverse();
+            const labels = recent.map(r => `${r.date.substring(5)} ${r.time}`);
+
+            // Update BP
+            bpChartInstance.data.labels = labels;
+            bpChartInstance.data.datasets[0].data = recent.map(r => r.sys || null);
+            bpChartInstance.data.datasets[1].data = recent.map(r => r.dia || null);
+            bpChartInstance.update();
+
+            // Update Sugar
+            sugarChartInstance.data.labels = labels;
+            sugarChartInstance.data.datasets[0].data = recent.map(r => (r.sugar && r.sugarType !== 'hba1c') ? r.sugar : null);
+            sugarChartInstance.update();
+        }
+
+        function loadSampleData() {
+            const today = new Date();
+            const samples = [];
+            
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date(today);
+                d.setDate(today.getDate() - i);
+                const dateStr = d.toISOString().split('T')[0];
+
+                // Generate realistic slight variation sample data
+                samples.push({
+                    id: Date.now() - (i * 100000),
+                    timestamp: `${dateStr}T07:30`,
+                    date: dateStr,
+                    time: '07:30',
+                    patient: 'คุณพ่อ',
+                    sys: 118 + Math.floor(Math.random() * 20),
+                    dia: 75 + Math.floor(Math.random() * 12),
+                    pulse: 70 + Math.floor(Math.random() * 10),
+                    sugar: 92 + Math.floor(Math.random() * 25),
+                    sugarType: 'fbs',
+                    notes: i === 0 ? 'งดกาแฟตอนเช้า' : 'ทานยารอบเช้าแล้ว'
+                });
+            }
+
+            records = samples;
+            saveRecords();
+            renderHistoryTable();
+            updateStatsSummary();
+            updateCharts();
+            showToast('โหลดข้อมูลตัวอย่างเรียบร้อยแล้ว!', 'success');
+        }
+
+        function exportToCSV() {
+            if (records.length === 0) {
+                showToast('ไม่มีข้อมูลสำหรับส่งออก', 'warning');
+                return;
+            }
+
+            let csv = '\uFEFF'; // BOM for Thai language UTF-8 in Excel
+            csv += 'ID,วันที่,เวลา,ผู้ป่วย,ความดันตัวบน(SYS),ความดันตัวล่าง(DIA),ชีพจร,ค่าน้ำตาล,ประเภทน้ำตาล,หมายเหตุ\n';
+
+            records.forEach(r => {
+                csv += `"${r.id}","${r.date}","${r.time}","${r.patient}","${r.sys || ''}","${r.dia || ''}","${r.pulse || ''}","${r.sugar || ''}","${r.sugarType}","${r.notes || ''}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `health_records_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast('ดาวน์โหลดไฟล์ CSV เรียบร้อยแล้ว', 'success');
+        }
+
+        function clearAllData() {
+            if (confirm('คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลประวัติสุขภาพทั้งหมด? การกระทำนี้ไม่สามารถย้อนกลับได้')) {
+                records = [];
+                saveRecords();
+                renderHistoryTable();
+                updateStatsSummary();
+                updateCharts();
+                showToast('ลบข้อมูลทั้งหมดเรียบร้อยแล้ว', 'info');
+            }
+        }
+
+        // Toast Notification System
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            const colors = {
+                success: 'bg-emerald-600 text-white',
+                warning: 'bg-amber-500 text-white',
+                info: 'bg-slate-800 text-white'
+            };
+
+            toast.className = `px-4 py-3 rounded-xl shadow-lg text-xs font-medium transition-all duration-300 transform translate-y-2 opacity-0 flex items-center space-x-2 pointer-events-auto ${colors[type] || colors.info}`;
+            toast.innerHTML = `
+                <i class="fa-solid ${type === 'success' ? 'fa-circle-check' : 'fa-circle-info'}"></i>
+                <span>${message}</span>
+            `;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
